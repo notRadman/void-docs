@@ -1,0 +1,1956 @@
+% =============================================================
+%  Void Linux + Sway — A Comprehensive Guide
+%  Compile with: pdflatex void-sway-guide-en.tex
+% =============================================================
+\documentclass[12pt, a4paper]{book}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+
+% Page layout
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=3cm, right=3cm]{geometry}
+
+% Code listings
+\usepackage{listings}
+\usepackage{xcolor}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{gray!10},
+  frame=single,
+  breaklines=true,
+  breakatwhitespace=true,
+  showstringspaces=false,
+  tabsize=2,
+  xleftmargin=8pt,
+  xrightmargin=8pt,
+  framesep=4pt,
+  commentstyle=\color{gray},
+  keywordstyle=\bfseries,
+}
+
+% Tables
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\renewcommand{\arraystretch}{1.3}
+
+% Misc
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{parskip}
+%\usepackage{microtype}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue,
+  pdftitle={Void Linux + Sway: A Comprehensive Guide},
+}
+
+% Simple box for notes/warnings using a framed environment
+\usepackage{mdframed}
+\newmdenv[linecolor=black, linewidth=0.6pt, innerleftmargin=8pt,
+  innerrightmargin=8pt, innertopmargin=6pt, innerbottommargin=6pt,
+  backgroundcolor=gray!8]{notebox}
+\newmdenv[linecolor=black, linewidth=1pt, innerleftmargin=8pt,
+  innerrightmargin=8pt, innertopmargin=6pt, innerbottommargin=6pt,
+  backgroundcolor=gray!5]{warningbox}
+
+% Column types for tables
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+% =============================================================
+\begin{document}
+
+% Title page
+\begin{titlepage}
+  \centering
+  \vspace*{4cm}
+  {\Huge\bfseries Void Linux + Sway\par}
+  \vspace{0.8cm}
+  {\Large A Comprehensive Setup Guide\par}
+  \vspace{1.5cm}
+  \rule{0.5\textwidth}{0.5pt}
+  \vspace{1.5cm}\par
+  {\normalsize
+  A personal reference guide for building the environment from scratch\\
+  on Void Linux with the Sway window manager.\\[0.4em]
+  Built from real-world experience and official documentation.\\[0.4em]
+  Each chapter is self-contained --- read only what you need.
+  \par}
+  \vspace{2cm}
+  {\normalsize\itshape Recommended installation order:\\[0.3em]
+  01 $\to$ 02 $\to$ 03 $\to$ 04 $\to$ 05 $\to$ 06 $\to$ 07}
+  \vfill
+  \rule{0.4\textwidth}{0.3pt}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+% =============================================================
+\chapter*{Void Linux Quick Reference}
+\addcontentsline{toc}{chapter}{Void Linux Quick Reference}
+
+\begin{lstlisting}
+# Install a package
+sudo xbps-install PACKAGE
+
+# Enable a service
+sudo ln -s /etc/sv/SERVICENAME /var/service/
+
+# After any "usermod -aG" --> log out and back in
+
+# Launch Sway correctly
+dbus-run-session sway
+
+# elogind vs seatd --> pick ONE, they cannot run together
+\end{lstlisting}
+
+% =============================================================
+\chapter{Basic Installation}
+% =============================================================
+
+\section{Update the System First}
+
+\begin{lstlisting}
+sudo xbps-install -Su
+\end{lstlisting}
+
+\section{Essential Build Tools}
+
+\begin{lstlisting}
+sudo xbps-install base-devel git make ca-certificates wget curl
+\end{lstlisting}
+
+\section{GPU Drivers (Mesa without Xorg)}
+
+\begin{notebox}
+On Wayland you do \textbf{not} need \texttt{xorg-server} or \texttt{xf86-video-intel}.
+\end{notebox}
+
+\subsection{Intel (e.g.\ Dell Latitude E6430)}
+\begin{lstlisting}
+sudo xbps-install mesa-dri intel-video-accel \
+  libva-utils mesa-vaapi mesa-vdpau \
+  vulkan-loader mesa-vulkan-intel
+\end{lstlisting}
+
+\subsection{AMD}
+\begin{lstlisting}
+sudo xbps-install mesa-dri mesa-vaapi mesa-vdpau \
+  vulkan-loader mesa-vulkan-radeon
+\end{lstlisting}
+
+\subsection{NVIDIA}
+\begin{lstlisting}
+sudo xbps-install nvidia nvidia-libs
+\end{lstlisting}
+
+\section{Session Manager (Choose One Only!)}
+
+\begin{warningbox}
+\textbf{Warning:} \texttt{elogind} and \texttt{seatd} cannot run together --- choose one.
+\end{warningbox}
+
+\subsection{Option A: elogind (recommended for laptops)}
+\begin{lstlisting}
+sudo xbps-install elogind
+sudo ln -s /etc/sv/elogind /var/service/
+\end{lstlisting}
+
+\textbf{elogind advantages:}
+\begin{itemize}[leftmargin=*]
+  \item Creates \texttt{XDG\_RUNTIME\_DIR} automatically
+  \item Supports power management (suspend, hibernate)
+  \item More stable with most applications
+\end{itemize}
+
+\subsection{Option B: seatd (lighter and simpler)}
+\begin{lstlisting}
+sudo xbps-install seatd
+sudo ln -s /etc/sv/seatd /var/service/
+sudo usermod -aG _seatd $USER
+\end{lstlisting}
+
+\textbf{seatd advantages:}
+\begin{itemize}[leftmargin=*]
+  \item Much lighter
+  \item Manages only the seat (not \texttt{XDG\_RUNTIME\_DIR})
+  \item Requires \texttt{pam\_rundir} alongside it
+\end{itemize}
+
+\section{XDG\_RUNTIME\_DIR}
+
+\subsection{If you chose elogind}
+Nothing needed --- it is created automatically.
+
+\subsection{If you chose seatd}
+\begin{lstlisting}
+sudo xbps-install pam_rundir
+\end{lstlisting}
+Add to \texttt{/etc/pam.d/system-login}:
+\begin{lstlisting}
+-session optional pam_rundir.so
+\end{lstlisting}
+
+\section{D-Bus}
+\begin{lstlisting}
+sudo xbps-install dbus
+sudo ln -s /etc/sv/dbus /var/service/
+\end{lstlisting}
+
+\section{Default User Directories}
+\begin{lstlisting}
+sudo xbps-install xdg-user-dirs
+xdg-user-dirs-update
+\end{lstlisting}
+
+\section{Sway and Core Tools}
+\begin{lstlisting}
+sudo xbps-install \
+  sway swaybg swayidle swaylock \
+  xorg-server-xwayland \
+  wlroots wl-clipboard
+
+# Terminal
+sudo xbps-install tilix   # or foot (lighter and faster)
+sudo xbps-install foot
+
+# App Launcher
+sudo xbps-install fuzzel   # or wofi
+sudo xbps-install wofi
+
+# Status Bar
+sudo xbps-install waybar
+
+# Notifications
+sudo xbps-install mako libnotify
+
+# Screenshot
+sudo xbps-install grim slurp
+
+# Screen Recording
+sudo xbps-install wf-recorder
+
+# Clipboard Manager
+sudo xbps-install clipman
+\end{lstlisting}
+
+\section{XDG Desktop Portals (Required for Screen Sharing)}
+\begin{lstlisting}
+sudo xbps-install \
+  xdg-desktop-portal \
+  xdg-desktop-portal-wlr \
+  xdg-desktop-portal-gtk \
+  xdg-utils
+\end{lstlisting}
+
+\subsection{Portal Configuration File (Important!)}
+\begin{lstlisting}
+mkdir -p ~/.config/xdg-desktop-portal
+nano ~/.config/xdg-desktop-portal/sway-portals.conf
+\end{lstlisting}
+
+\begin{lstlisting}
+[preferred]
+default=gtk
+org.freedesktop.impl.portal.Screenshot=wlr
+org.freedesktop.impl.portal.ScreenCast=wlr
+\end{lstlisting}
+
+\begin{notebox}
+The file must be named \texttt{sway-portals.conf} exactly, because \texttt{XDG\_CURRENT\_DESKTOP=sway}.
+\end{notebox}
+
+\section{Media Codecs}
+\begin{lstlisting}
+sudo xbps-install \
+  ffmpeg \
+  gst-plugins-base1 \
+  gst-plugins-good1 \
+  gst-plugins-bad1 \
+  gst-plugins-ugly1
+\end{lstlisting}
+
+\section{Power Management (Laptops)}
+\begin{lstlisting}
+sudo xbps-install tlp acpid acpi brightnessctl
+sudo ln -s /etc/sv/acpid /var/service/
+sudo ln -s /etc/sv/tlpd /var/service/
+sudo usermod -aG video $USER
+\end{lstlisting}
+
+\subsection{TLP Configuration (Important for WiFi stability)}
+\begin{lstlisting}
+sudo nano /etc/tlp.conf
+\end{lstlisting}
+Find and change:
+\begin{lstlisting}
+WIFI_PWR_ON_AC=off
+WIFI_PWR_ON_BAT=off
+\end{lstlisting}
+
+\section{Fonts}
+\begin{lstlisting}
+sudo xbps-install \
+  liberation-fonts-ttf \
+  dejavu-fonts-ttf \
+  noto-fonts-ttf \
+  noto-fonts-ttf-extra \
+  noto-fonts-emoji \
+  font-ibm-plex-ttf \
+  terminus-font \
+  font-awesome6
+\end{lstlisting}
+
+\begin{notebox}
+\textbf{JetBrains Mono:} Not in the repo --- download it manually from \url{https://www.jetbrains.com/lp/mono/} and place it in \texttt{\textasciitilde/.local/share/fonts/}
+\end{notebox}
+
+\section{Environment Variables}
+
+Add to \texttt{\textasciitilde/.bash\_profile} or \texttt{\textasciitilde/.profile}:
+
+\begin{lstlisting}
+# XDG Base Directories
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_STATE_HOME="$HOME/.local/state"
+export PATH="$HOME/.local/bin:$PATH"
+
+# XDG_RUNTIME_DIR (if not using elogind)
+if test -z "${XDG_RUNTIME_DIR}"; then
+    export XDG_RUNTIME_DIR=/tmp/${UID}-runtime-dir
+    if ! test -d "${XDG_RUNTIME_DIR}"; then
+        mkdir "${XDG_RUNTIME_DIR}"
+        chmod 0700 "${XDG_RUNTIME_DIR}"
+    fi
+fi
+
+# Wayland
+export XDG_SESSION_TYPE=wayland
+export XDG_SESSION_DESKTOP=sway
+export XDG_CURRENT_DESKTOP=sway
+export DE=sway
+
+# Application hints
+export MOZ_ENABLE_WAYLAND=1
+export QT_QPA_PLATFORM=wayland
+export QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+export SDL_VIDEODRIVER=wayland
+export ELECTRON_OZONE_PLATFORM_HINT=auto
+export _JAVA_AWT_WM_NONREPARENTING=1
+
+# If using seatd
+export LIBSEAT_BACKEND=seatd
+
+# Auto-start Sway from tty1
+if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "${XDG_VTNR:-0}" -eq 1 ]; then
+    exec dbus-run-session sway
+fi
+\end{lstlisting}
+
+\section{Copy the Default Config}
+\begin{lstlisting}
+mkdir -p ~/.config/sway
+cp /etc/sway/config ~/.config/sway/config
+\end{lstlisting}
+
+\section{Essential Additions to the Sway Config}
+
+Open \texttt{\textasciitilde/.config/sway/config} and add:
+
+\begin{lstlisting}
+### Update dbus environment ###
+exec dbus-update-activation-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP
+
+### XDG Desktop Portal ###
+exec /usr/libexec/xdg-desktop-portal-wlr &
+exec /usr/libexec/xdg-desktop-portal -r &
+
+### PipeWire ###
+exec pipewire &
+
+### Notifications ###
+exec mako &
+
+### Polkit ###
+exec /usr/libexec/polkit-gnome-authentication-agent-1 &
+
+### Network ###
+exec nm-applet --indicator &
+
+### Bluetooth ###
+exec blueman-applet &
+
+### Clipboard ###
+exec wl-paste -t text --watch clipman store &
+
+### USB Auto-mount ###
+exec udiskie --tray &
+
+### Keyboard Layout ###
+input type:keyboard {
+    xkb_layout us,ara
+    xkb_options grp:lwin_toggle
+    repeat_delay 300
+    repeat_rate 50
+}
+
+### Touchpad ###
+input type:touchpad {
+    tap enabled
+    natural_scroll enabled
+    dwt enabled
+}
+
+### Key Bindings ###
+# Screenshot
+bindsym Print exec grim ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+bindsym Shift+Print exec grim -g "$(slurp)" ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+bindsym Ctrl+Print exec grim -g "$(slurp)" - | wl-copy
+
+# Volume
+bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+
+# Brightness
+bindsym XF86MonBrightnessUp exec brightnessctl set +10%
+bindsym XF86MonBrightnessDown exec brightnessctl set 10%-
+
+# Lock screen
+bindsym $mod+l exec swaylock -f -c 000000
+
+### Idle + Lock ###
+exec swayidle -w \
+    timeout 300 'swaylock -f -c 000000' \
+    timeout 600 'swaymsg "output * dpms off"' \
+    resume 'swaymsg "output * dpms on"' \
+    before-sleep 'swaylock -f -c 000000'
+\end{lstlisting}
+
+\section{Final Verification}
+\begin{lstlisting}
+sv status dbus
+sv status elogind   # or seatd
+groups $USER
+echo $XDG_RUNTIME_DIR
+echo $WAYLAND_DISPLAY   # after launching Sway: wayland-1
+pactl info | grep "Server Name"
+grim ~/test.png
+\end{lstlisting}
+
+% =============================================================
+\chapter{Audio (PipeWire + ALSA)}
+% =============================================================
+
+\section{Installation}
+\begin{lstlisting}
+sudo xbps-install \
+  pipewire \
+  wireplumber \
+  alsa-utils \
+  alsa-tools \
+  alsa-pipewire \
+  libspa-bluetooth \
+  pavucontrol
+\end{lstlisting}
+
+\begin{notebox}
+\texttt{libspa-bluetooth} is required for Bluetooth headphones to work with PipeWire.
+\end{notebox}
+
+\section{Configure WirePlumber}
+\begin{lstlisting}
+mkdir -p ~/.config/pipewire/pipewire.conf.d
+
+ln -s /usr/share/examples/wireplumber/10-wireplumber.conf \
+      ~/.config/pipewire/pipewire.conf.d/
+\end{lstlisting}
+
+\section{Configure PipeWire-Pulse (for PulseAudio app support)}
+\begin{lstlisting}
+sudo xbps-install pipewire-pulse
+
+ln -s /usr/share/examples/pipewire/20-pipewire-pulse.conf \
+      ~/.config/pipewire/pipewire.conf.d/
+\end{lstlisting}
+
+\section{Configure ALSA with PipeWire}
+\begin{lstlisting}
+sudo mkdir -p /etc/alsa/conf.d
+
+sudo ln -s /usr/share/alsa/alsa.conf.d/50-pipewire.conf \
+           /etc/alsa/conf.d/
+
+sudo ln -s /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf \
+           /etc/alsa/conf.d/
+
+alsactl init
+\end{lstlisting}
+
+\section{Starting PipeWire}
+
+On Void, PipeWire is \textbf{started from inside Sway}, not as a system service.
+
+In your Sway config:
+\begin{lstlisting}
+exec pipewire &
+\end{lstlisting}
+
+\begin{warningbox}
+\textbf{Warning:} Do not try to enable it with \texttt{ln -s /etc/sv/pipewire /var/service/} --- it will not work correctly.
+\end{warningbox}
+
+\section{Adjusting Volume Levels}
+\begin{lstlisting}
+# Command line
+alsamixer
+
+# Graphical
+pavucontrol
+\end{lstlisting}
+
+\section{Verification}
+\begin{lstlisting}
+pactl info | grep "Server Name"
+# Expected: PulseAudio (on PipeWire ...)
+
+pactl list sources short
+pactl list sinks short
+\end{lstlisting}
+
+\section{Common Problems}
+
+\textbf{No audio:}
+\begin{lstlisting}
+pactl info
+pipewire &
+pactl info
+\end{lstlisting}
+
+\textbf{Bluetooth headphones not working:}
+\begin{lstlisting}
+sudo xbps-install libspa-bluetooth
+# Then restart Sway
+\end{lstlisting}
+
+\textbf{No sound device found:}
+\begin{lstlisting}
+aplay -l
+# If empty, check GPU drivers and kernel modules
+\end{lstlisting}
+
+% =============================================================
+\chapter{Theming (Consistent Look)}
+% =============================================================
+
+\section{The Basic Concept}
+
+A Wayland theme consists of 4 separate layers:
+
+\begin{center}
+\begin{tabularx}{0.85\textwidth}{lL}
+\toprule
+\textbf{Layer} & \textbf{Effect} \\
+\midrule
+GTK Theme   & Colors and shape of buttons and windows \\
+Icon Theme  & File and application icons \\
+Cursor Theme & Mouse pointer appearance \\
+Font        & Text font in all applications \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{notebox}
+\textbf{The problem:} On Wayland, GTK does not read settings automatically --- they must be set via \texttt{gsettings}. \textbf{The solution:} Use the \texttt{nwg-look} tool.
+\end{notebox}
+
+\section{Installation}
+\begin{lstlisting}
+sudo xbps-install nwg-look
+
+# Materia (flat, modern)
+sudo xbps-install materia-theme
+
+# Arc
+sudo xbps-install arc-theme
+
+# Adwaita:dark -- included with GTK by default
+\end{lstlisting}
+
+Download a theme from the internet (e.g.\ Catppuccin):
+\begin{lstlisting}
+mkdir -p ~/.local/share/themes
+cd ~/.local/share/themes
+# Extract the downloaded zip here
+\end{lstlisting}
+
+\begin{lstlisting}
+# Icon Theme
+sudo xbps-install papirus-icon-theme
+
+# Cursor Theme
+sudo xbps-install breeze-cursors
+\end{lstlisting}
+
+\section{Applying the Theme}
+\begin{lstlisting}
+nwg-look
+# Choose GTK Theme + Icons + Cursor + Font
+# Click Apply
+\end{lstlisting}
+
+\section{Cursor in the Sway Config}
+
+Add to \texttt{\textasciitilde/.config/sway/config}:
+\begin{lstlisting}
+seat seat0 xcursor_theme THEME_NAME 24
+\end{lstlisting}
+
+\section{Fonts}
+\begin{lstlisting}
+sudo xbps-install \
+  font-jetbrains-mono \
+  noto-fonts-ttf \
+  noto-fonts-ttf-extra \
+  noto-fonts-emoji \
+  font-awesome6 \
+  dejavu-fonts-ttf
+
+# Rebuild cache after installing new fonts
+fc-cache -fv
+\end{lstlisting}
+
+In the Sway config:
+\begin{lstlisting}
+font pango:JetBrains Mono 11, Font Awesome 6 Free 11
+\end{lstlisting}
+
+\section{Theme Locations}
+\begin{lstlisting}
+# GTK themes
+/usr/share/themes/
+~/.local/share/themes/
+
+# Icons + Cursors
+/usr/share/icons/
+~/.local/share/icons/
+
+# List installed themes
+ls /usr/share/themes/
+ls /usr/share/icons/
+fc-list | grep -i "jet\|noto"
+\end{lstlisting}
+
+% =============================================================
+\chapter{Screenshot, Screen Recording, and Clipboard}
+% =============================================================
+
+\section{Install the Tools}
+\begin{lstlisting}
+sudo xbps-install grim slurp wf-recorder wl-clipboard clipman
+\end{lstlisting}
+
+\section{Screenshots}
+
+\subsection{Direct Commands}
+\begin{lstlisting}
+# Full screen
+grim ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+
+# Selected region
+grim -g "$(slurp)" ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+
+# Copy directly to clipboard
+grim -g "$(slurp)" - | wl-copy
+\end{lstlisting}
+
+\subsection{In the Sway Config}
+\begin{lstlisting}
+bindsym Print exec grim ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+bindsym Shift+Print exec grim -g "$(slurp)" ~/Pictures/screenshot-$(date +%Y%m%d-%H%M%S).png
+bindsym Ctrl+Print exec grim -g "$(slurp)" - | wl-copy
+\end{lstlisting}
+
+\section{Screen Recording with wf-recorder}
+\begin{lstlisting}
+# Full screen
+wf-recorder -f ~/Videos/recording.mp4
+
+# Selected region
+wf-recorder -g "$(slurp)" -f ~/Videos/recording.mp4
+
+# With audio
+wf-recorder -a -f ~/Videos/recording.mp4
+
+# With a specific audio device
+pactl list sources short          # list available devices
+wf-recorder -a "source_name" -f ~/Videos/recording.mp4
+
+# Stop recording
+# Ctrl+C
+\end{lstlisting}
+
+\section{Clipboard Manager with clipman}
+
+\subsection{Start (in Sway config)}
+\begin{lstlisting}
+exec wl-paste -t text --watch clipman store &
+\end{lstlisting}
+
+\subsection{Browse History}
+\begin{lstlisting}
+clipman pick --tool wofi
+# or
+clipman pick --tool fuzzel
+\end{lstlisting}
+
+Add to Sway config:
+\begin{lstlisting}
+bindsym $mod+shift+v exec clipman pick --tool fuzzel
+\end{lstlisting}
+
+\subsection{Clear History}
+\begin{lstlisting}
+clipman clear --all
+\end{lstlisting}
+
+% =============================================================
+\chapter{Hardware (Bluetooth, Printer, USB, MTP)}
+% =============================================================
+
+\section{Bluetooth}
+
+\subsection{Installation}
+\begin{lstlisting}
+sudo xbps-install bluez blueman libspa-bluetooth
+sudo ln -s /etc/sv/bluetoothd /var/service/
+sudo usermod -aG bluetooth $USER
+# Log out and back in
+\end{lstlisting}
+
+In the Sway config:
+\begin{lstlisting}
+exec blueman-applet &
+\end{lstlisting}
+
+\subsection{Usage (CLI)}
+\begin{lstlisting}
+bluetoothctl
+power on
+scan on
+pair XX:XX:XX:XX:XX:XX
+connect XX:XX:XX:XX:XX:XX
+trust XX:XX:XX:XX:XX:XX
+\end{lstlisting}
+
+\subsection{Verification}
+\begin{lstlisting}
+sv status bluetoothd
+\end{lstlisting}
+
+\section{Printer with CUPS}
+
+\subsection{Installation}
+\begin{lstlisting}
+sudo xbps-install cups cups-filters gutenprint system-config-printer
+# HP printers:
+sudo xbps-install hplip
+# Epson printers:
+sudo xbps-install epson-inkjet-printer-escpr
+
+sudo ln -s /etc/sv/cupsd /var/service/
+sudo usermod -aG lpadmin $USER
+\end{lstlisting}
+
+\subsection{Adding a Printer}
+Open in your browser: \texttt{http://localhost:631}\\
+Then: Administration $\to$ Add Printer
+
+\section{USB Auto-mount with udiskie}
+
+\subsection{Installation}
+\begin{lstlisting}
+sudo xbps-install udisks2 udiskie gvfs ntfs-3g exfat-utils
+\end{lstlisting}
+
+\subsection{Polkit Rule (to avoid password prompts)}
+\begin{lstlisting}
+sudo mkdir -p /etc/polkit-1/rules.d/
+sudo nano /etc/polkit-1/rules.d/50-udisks.rules
+\end{lstlisting}
+
+\begin{lstlisting}
+polkit.addRule(function(action, subject) {
+  if (subject.isInGroup("wheel")) {
+    if (action.id.startsWith("org.freedesktop.udisks2.")) {
+      return polkit.Result.YES;
+    }
+  }
+});
+\end{lstlisting}
+
+In the Sway config:
+\begin{lstlisting}
+exec udiskie --tray &
+\end{lstlisting}
+
+\subsection{Manual Unmount}
+\begin{lstlisting}
+udiskie-umount /run/media/$USER/DRIVE_NAME
+udiskie-umount --all
+\end{lstlisting}
+
+\section{MTP (Phone via USB)}
+\begin{lstlisting}
+sudo xbps-install go-mtpfs libmtp
+sudo usermod -aG plugdev $USER
+\end{lstlisting}
+
+\subsection{FUSE Setup}
+\begin{lstlisting}
+# Uncomment the user_allow_other line
+sudo sed -i '/user_allow_other/s/^#//g' /etc/fuse.conf
+\end{lstlisting}
+
+\subsection{Usage}
+\begin{lstlisting}
+# Detect connected devices
+mtp-detect
+
+# Mount the device
+mkdir -p ~/phone
+go-mtpfs ~/phone &
+
+# Unmount
+fusermount -u ~/phone
+\end{lstlisting}
+
+% =============================================================
+\chapter{Networking (VPN, Hotspot, Tethering)}
+% =============================================================
+
+\section{NetworkManager Setup}
+\begin{lstlisting}
+sudo xbps-install NetworkManager network-manager-applet
+
+# Stop old services
+sudo sv stop dhcpcd wpa_supplicant 2>/dev/null
+sudo rm /var/service/dhcpcd /var/service/wpa_supplicant 2>/dev/null
+
+# Enable NetworkManager
+sudo ln -s /etc/sv/dbus /var/service/
+sudo ln -s /etc/sv/NetworkManager /var/service/
+\end{lstlisting}
+
+\subsection{Static DNS (optional)}
+\begin{lstlisting}
+sudo nano /etc/resolv.conf
+\end{lstlisting}
+\begin{lstlisting}
+nameserver 1.1.1.1
+nameserver 8.8.8.8
+\end{lstlisting}
+\begin{lstlisting}
+sudo chattr +i /etc/resolv.conf   # Prevent NetworkManager from overwriting it
+\end{lstlisting}
+
+\section{VPN}
+
+\subsection{Install Plugins}
+\begin{lstlisting}
+# OpenVPN
+sudo xbps-install NetworkManager-openvpn
+
+# WireGuard
+sudo xbps-install wireguard-tools NetworkManager-wireguard
+
+# L2TP/IPSec
+sudo xbps-install NetworkManager-l2tp
+\end{lstlisting}
+
+\subsection{Add a VPN Connection}
+\begin{lstlisting}
+# Import a config file
+nmcli connection import type openvpn file /path/to/config.ovpn
+nmcli connection import type wireguard file /path/to/config.conf
+
+# Using the TUI
+nmtui
+\end{lstlisting}
+
+\subsection{Enable / Disable}
+\begin{lstlisting}
+nmcli connection up VPN_NAME
+nmcli connection down VPN_NAME
+nmcli connection show
+\end{lstlisting}
+
+\section{Hotspot}
+
+\begin{warningbox}
+\textbf{Warning:} Most WiFi cards do not support internet access and hotspot simultaneously on the same adapter.
+\end{warningbox}
+
+\subsection{Quick Start}
+\begin{lstlisting}
+nmcli device wifi hotspot ifname wlan0 ssid "MyNetwork" password "MyPassword"
+\end{lstlisting}
+
+\subsection{Show QR Code}
+\begin{lstlisting}
+nmcli device wifi show-password
+\end{lstlisting}
+
+\subsection{Persistent Hotspot}
+\begin{lstlisting}
+nmcli con add type wifi ifname wlan0 con-name "MyHotspot" autoconnect no \
+  ssid "MyNetwork" \
+  802-11-wireless.mode ap \
+  802-11-wireless.band bg \
+  ipv4.method shared \
+  wifi-sec.key-mgmt wpa-psk \
+  wifi-sec.psk "MyPassword"
+
+nmcli con up MyHotspot
+nmcli con down MyHotspot
+\end{lstlisting}
+
+\section{USB Tethering (Phone Internet on Laptop)}
+\begin{lstlisting}
+# Connect your phone via USB and enable USB Tethering on it
+ip link show             # A new interface will appear (usb0 or enp...)
+nmcli device status      # NetworkManager should detect it automatically
+\end{lstlisting}
+
+% =============================================================
+\chapter{Applications}
+% =============================================================
+
+\section{Browser}
+\begin{lstlisting}
+sudo xbps-install firefox
+\end{lstlisting}
+Firefox runs natively on Wayland as long as \texttt{MOZ\_ENABLE\_WAYLAND=1} is set in your environment.
+
+\section{Multimedia}
+\begin{lstlisting}
+# Video
+sudo xbps-install mpv        # native Wayland
+# or
+sudo xbps-install vlc
+
+# Images
+sudo xbps-install imv         # native Wayland
+
+# Audio control
+sudo xbps-install pavucontrol
+\end{lstlisting}
+
+\section{File Manager}
+\begin{lstlisting}
+# Terminal
+sudo xbps-install nnn
+
+# Graphical
+sudo xbps-install thunar
+\end{lstlisting}
+
+\section{Archive Tools}
+\begin{lstlisting}
+sudo xbps-install unzip zip p7zip file-roller
+\end{lstlisting}
+
+\section{System Monitoring}
+\begin{lstlisting}
+sudo xbps-install htop btop fastfetch lm_sensors
+\end{lstlisting}
+
+\section{Flatpak}
+\begin{lstlisting}
+sudo xbps-install flatpak xdg-user-dirs
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+# Install an app
+flatpak install flathub com.discordapp.Discord
+
+# Run an app
+flatpak run com.discordapp.Discord
+
+# Update all
+flatpak update
+
+# List installed apps
+flatpak list
+\end{lstlisting}
+
+\section{AppImage}
+\begin{lstlisting}
+sudo xbps-install fuse
+sudo modprobe fuse
+
+chmod +x AppName.AppImage
+./AppName.AppImage
+
+# If it complains about FUSE
+./AppName.AppImage --appimage-extract-and-run
+
+# Organized location
+mkdir -p ~/AppImages
+\end{lstlisting}
+
+\section{Emacs}
+\begin{lstlisting}
+sudo xbps-install emacs        # with GUI
+sudo xbps-install emacs-nox    # terminal only (lighter)
+\end{lstlisting}
+Config location: \texttt{\textasciitilde/.config/emacs/init.el}
+
+\section{Terminal Tools for Coding}
+\begin{lstlisting}
+sudo xbps-install \
+  ripgrep \
+  fd \
+  bat \
+  eza \
+  fzf \
+  zoxide \
+  btop \
+  lazygit
+\end{lstlisting}
+
+\begin{center}
+\begin{tabularx}{0.9\textwidth}{llL}
+\toprule
+\textbf{Tool} & \textbf{Replaces} & \textbf{Benefit} \\
+\midrule
+rg      & grep  & Much faster \\
+fd      & find  & Simpler and faster \\
+bat     & cat   & Syntax highlighting \\
+eza     & ls    & Cleaner and more informative \\
+fzf     & ---   & Fuzzy finder for everything \\
+zoxide  & cd    & Remembers visited directories \\
+btop    & htop  & More features and better visuals \\
+lazygit & git   & TUI for git \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Link fzf to Shell History}
+Add to \texttt{\textasciitilde/.bashrc}:
+\begin{lstlisting}
+source /usr/share/fzf/key-bindings.bash
+source /usr/share/fzf/completion.bash
+\end{lstlisting}
+Then \texttt{Ctrl+R} will open a fuzzy search over your shell history.
+
+% =============================================================
+\chapter{AppImage and Desktop Entries}
+% =============================================================
+
+\section{Directory Structure}
+\begin{lstlisting}
+~/AppImages/
+ +-- obsidian.AppImage
+ +-- ticktick.AppImage
+ +-- icons/
+     +-- obsidian.png
+     +-- ticktick.png
+
+~/.local/share/applications/    # Desktop entries
+~/.config/mimeapps.list         # MIME associations
+\end{lstlisting}
+
+\section{Setting Up a New AppImage}
+\begin{lstlisting}
+# 1. Create directories
+mkdir -p ~/AppImages/icons
+mkdir -p ~/.local/share/applications
+
+# 2. Move the AppImage
+mv downloaded.AppImage ~/AppImages/appname.AppImage
+chmod 755 ~/AppImages/appname.AppImage
+
+# 3. Place the icon
+cp icon.png ~/AppImages/icons/appname.png
+chmod 644 ~/AppImages/icons/appname.png
+\end{lstlisting}
+
+\section{Desktop Entry Template}
+\begin{lstlisting}
+nano ~/.local/share/applications/appname.desktop
+\end{lstlisting}
+
+\begin{lstlisting}
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Application Name
+Comment=Short description
+Exec=/home/USERNAME/AppImages/appname.AppImage %F
+Icon=/home/USERNAME/AppImages/icons/appname.png
+Terminal=false
+Categories=Office;Utility;
+MimeType=text/markdown;text/plain;
+StartupNotify=true
+\end{lstlisting}
+
+\begin{lstlisting}
+chmod 644 ~/.local/share/applications/appname.desktop
+update-desktop-database ~/.local/share/applications
+\end{lstlisting}
+
+\section{Exec Variables}
+
+\begin{center}
+\begin{tabularx}{0.7\textwidth}{lL}
+\toprule
+\textbf{Variable} & \textbf{Meaning} \\
+\midrule
+\%f & Single file \\
+\%F & Multiple files \\
+\%u & Single URL \\
+\%U & Multiple URLs \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Common MIME Types}
+\begin{lstlisting}
+text/plain        ->  .txt
+text/markdown     ->  .md
+text/html         ->  .html
+application/pdf   ->  .pdf
+image/png         ->  .png
+image/jpeg        ->  .jpg
+\end{lstlisting}
+
+\subsection{Useful Commands}
+\begin{lstlisting}
+# Get the MIME type of a file
+xdg-mime query filetype document.md
+
+# Get the default application for a type
+xdg-mime query default text/markdown
+
+# Set the default application
+xdg-mime default obsidian.desktop text/markdown
+\end{lstlisting}
+
+\section{Full Example: Obsidian}
+\begin{lstlisting}
+mkdir -p ~/AppImages/icons
+mv Obsidian-*.AppImage ~/AppImages/obsidian.AppImage
+chmod 755 ~/AppImages/obsidian.AppImage
+cp obsidian-icon.png ~/AppImages/icons/obsidian.png
+chmod 644 ~/AppImages/icons/obsidian.png
+\end{lstlisting}
+
+\begin{lstlisting}
+# ~/.local/share/applications/obsidian.desktop
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Obsidian
+Comment=Knowledge base and note-taking app
+Exec=/home/USERNAME/AppImages/obsidian.AppImage %F
+Icon=/home/USERNAME/AppImages/icons/obsidian.png
+Terminal=false
+Categories=Office;TextEditor;Utility;
+MimeType=text/markdown;text/plain;
+StartupNotify=true
+\end{lstlisting}
+
+\begin{lstlisting}
+chmod 644 ~/.local/share/applications/obsidian.desktop
+update-desktop-database ~/.local/share/applications
+xdg-mime default obsidian.desktop text/markdown
+\end{lstlisting}
+
+\section{Web App as a Desktop Entry}
+\begin{lstlisting}
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Gmail
+Exec=firefox --new-window https://mail.google.com
+Icon=/home/USERNAME/AppImages/icons/gmail.png
+Terminal=false
+Categories=Network;WebBrowser;
+StartupNotify=true
+\end{lstlisting}
+
+\section{Quick Reference}
+\begin{lstlisting}
+chmod +x file.AppImage
+chmod 644 file.desktop
+update-desktop-database ~/.local/share/applications
+xdg-mime default app.desktop text/markdown
+xdg-mime query default text/markdown
+gtk-launch appname              # Test a desktop entry
+xdg-open file.md                # Open with the default application
+desktop-file-validate app.desktop
+\end{lstlisting}
+
+% =============================================================
+\chapter{KVM/QEMU Virtualization}
+% =============================================================
+
+\section{Verify CPU Virtualization Support}
+\begin{lstlisting}
+lscpu | grep -i virtualization
+grep -E '(vmx|svm)' /proc/cpuinfo
+\end{lstlisting}
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Intel:} Must show \texttt{VT-x} or \texttt{vmx}
+  \item \textbf{AMD:} Must show \texttt{AMD-V} or \texttt{svm}
+\end{itemize}
+
+If nothing appears, enable it in the BIOS: look for \textit{Virtualization Technology} or \textit{Intel VT-x}.
+
+\section{Installation}
+\begin{lstlisting}
+sudo xbps-install virt-manager libvirt qemu dnsmasq bridge-utils openbsd-netcat
+\end{lstlisting}
+
+\begin{center}
+\begin{tabularx}{0.85\textwidth}{lL}
+\toprule
+\textbf{Package} & \textbf{Purpose} \\
+\midrule
+virt-manager  & GUI for managing VMs \\
+libvirt       & Virtualization API \\
+qemu          & The emulator \\
+dnsmasq       & DNS/DHCP for virtual networks \\
+bridge-utils  & Network bridging \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Enable Services}
+\begin{lstlisting}
+sudo ln -s /etc/sv/dbus /var/service/        # if not already enabled
+sudo ln -s /etc/sv/libvirtd /var/service/
+sudo ln -s /etc/sv/virtlockd /var/service/
+sudo ln -s /etc/sv/virtlogd /var/service/
+\end{lstlisting}
+
+\section{Add User to the Group}
+\begin{lstlisting}
+sudo usermod -aG libvirt $USER
+# Log out and back in
+\end{lstlisting}
+
+\section{Load the KVM Module}
+\begin{lstlisting}
+# Intel
+sudo modprobe kvm_intel
+
+# AMD
+sudo modprobe kvm_amd
+
+# Load automatically on boot (Intel)
+echo "kvm_intel" | sudo tee /etc/modules-load.d/kvm.conf
+\end{lstlisting}
+
+\section{Configure libvirt (to run VMs without sudo)}
+\begin{lstlisting}
+sudo nano /etc/libvirt/libvirtd.conf
+\end{lstlisting}
+
+Uncomment these lines:
+\begin{lstlisting}
+unix_sock_group = "libvirt"
+unix_sock_ro_perms = "0777"
+unix_sock_rw_perms = "0770"
+\end{lstlisting}
+
+\begin{lstlisting}
+sudo nano /etc/libvirt/libvirt.conf
+\end{lstlisting}
+
+Uncomment:
+\begin{lstlisting}
+uri_default = "qemu:///system"
+\end{lstlisting}
+
+\begin{lstlisting}
+sudo sv restart libvirtd
+sudo reboot
+\end{lstlisting}
+
+\section{Post-Reboot Verification}
+\begin{lstlisting}
+lsmod | grep kvm
+ls -la /dev/kvm
+sudo virsh list --all
+groups | grep libvirt
+\end{lstlisting}
+
+\section{Essential virsh Commands}
+\begin{lstlisting}
+virsh list --all              # List all VMs
+virsh start <vm-name>         # Start a VM
+virsh shutdown <vm-name>      # Graceful shutdown
+virsh destroy <vm-name>       # Force shutdown
+virsh undefine <vm-name>      # Delete a VM
+virsh dominfo <vm-name>       # Show VM info
+virsh edit <vm-name>          # Edit VM config
+\end{lstlisting}
+
+\section{Nested Virtualization}
+\begin{lstlisting}
+# Intel
+sudo modprobe -r kvm_intel
+sudo modprobe kvm_intel nested=1
+
+# Persistent
+echo "options kvm_intel nested=1" | sudo tee /etc/modprobe.d/kvm.conf
+\end{lstlisting}
+
+\section{Troubleshooting}
+\begin{lstlisting}
+# "Unable to connect to libvirt"
+sudo sv status dbus
+sudo sv status libvirtd
+sudo sv up libvirtd
+
+# "Could not access KVM kernel module"
+lsmod | grep kvm
+sudo modprobe kvm_intel
+ls -la /dev/kvm
+
+# "Permission denied"
+groups | grep libvirt
+sudo usermod -aG libvirt $USER
+# Log out and back in
+\end{lstlisting}
+
+% =============================================================
+\chapter{Troubleshooting}
+% =============================================================
+
+\section{Sway Won't Start}
+
+\subsection{"Failed to create backend"}
+\begin{lstlisting}
+# Verify elogind or seatd
+sudo sv status elogind
+sudo sv status seatd
+
+# If using seatd, verify group membership
+groups | grep _seatd
+
+# Verify dbus
+sudo sv status dbus
+\end{lstlisting}
+
+\subsection{Sway starts and crashes immediately}
+\begin{lstlisting}
+dbus-run-session sway 2>&1 | head -30
+\end{lstlisting}
+
+\section{XDG\_RUNTIME\_DIR Issues}
+\begin{lstlisting}
+# Temporary manual fix
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+sudo mkdir -p $XDG_RUNTIME_DIR
+sudo chown $USER:$USER $XDG_RUNTIME_DIR
+sudo chmod 0700 $XDG_RUNTIME_DIR
+
+# Permanent fix: pam_rundir (with seatd)
+sudo xbps-install pam_rundir
+# Add to /etc/pam.d/system-login:
+# -session optional pam_rundir.so
+\end{lstlisting}
+
+\section{Audio}
+
+\subsection{PipeWire not running}
+\begin{lstlisting}
+sudo sv status dbus
+ls ~/.config/pipewire/pipewire.conf.d/
+pipewire &
+pactl info
+grep pipewire ~/.config/sway/config
+\end{lstlisting}
+
+\section{Firefox Not Running on Wayland}
+\begin{lstlisting}
+echo $MOZ_ENABLE_WAYLAND
+# Expected: 1
+
+MOZ_ENABLE_WAYLAND=1 firefox
+\end{lstlisting}
+
+\section{Screen Sharing Not Working}
+\begin{lstlisting}
+# 1. Verify installation
+xbps-query xdg-desktop-portal-wlr
+
+# 2. Check portal config
+cat ~/.config/xdg-desktop-portal/sway-portals.conf
+
+# 3. Check dbus environment variables
+dbus-update-activation-environment --print-environment | grep XDG_CURRENT_DESKTOP
+
+# 4. Restart portals manually
+killall xdg-desktop-portal xdg-desktop-portal-wlr 2>/dev/null
+/usr/libexec/xdg-desktop-portal-wlr &
+/usr/libexec/xdg-desktop-portal -r &
+
+# 5. Test in Firefox
+# https://mozilla.github.io/webrtc-landing/gum_test.html
+\end{lstlisting}
+
+\section{Qt Apps Showing as X11}
+\begin{lstlisting}
+echo $QT_QPA_PLATFORM
+# Expected: wayland
+
+sudo xbps-install qt5-wayland qt6-wayland
+\end{lstlisting}
+
+\section{Java Apps (Blank Grey Window)}
+\begin{lstlisting}
+# Add to ~/.profile
+export _JAVA_AWT_WM_NONREPARENTING=1
+\end{lstlisting}
+
+\section{AppImage Won't Launch}
+\begin{lstlisting}
+sudo xbps-install fuse
+sudo modprobe fuse
+chmod 755 ~/AppImages/app.AppImage
+./app.AppImage --appimage-extract-and-run
+\end{lstlisting}
+
+\section{General Diagnostic Commands}
+\begin{lstlisting}
+echo $WAYLAND_DISPLAY        # Expected: wayland-1
+swaymsg -t get_version
+swaymsg -t get_outputs
+swaymsg -t get_inputs
+dbus-update-activation-environment --print-environment
+\end{lstlisting}
+
+% =============================================================
+\chapter{xbps-src: Building Packages Not in the Repo}
+% =============================================================
+
+\section{The Core Concept}
+
+\texttt{xbps-src} is similar to \texttt{PKGBUILD} on Arch Linux or \texttt{ebuild} on Gentoo.
+
+Instead of building from source manually, you write (or copy) a small ``recipe'' file called a \textbf{template}. Then \texttt{xbps-src} builds the program and creates an \texttt{.xbps} package that you can install and remove with \texttt{xbps} like any other package.
+
+\begin{notebox}
+\textbf{The main benefit:} The program becomes managed --- you can remove it with \texttt{xbps-remove} just like any other package.
+\end{notebox}
+
+\section{Initial Setup (One Time Only)}
+
+\begin{lstlisting}
+sudo xbps-install git xtools base-devel
+
+cd ~
+git clone --depth=1 https://github.com/void-linux/void-packages.git
+cd void-packages
+
+./xbps-src binary-bootstrap
+\end{lstlisting}
+
+\begin{notebox}
+\texttt{--depth=1} fetches only the latest snapshot without the full history --- much faster.
+\end{notebox}
+
+\section{Building a Package Already in void-packages}
+
+\begin{lstlisting}
+# Search for the template
+ls srcpkgs/ | grep -i package_name
+./xbps-src search package_name
+
+# Build
+./xbps-src pkg package_name
+
+# Install
+sudo xbps-install --repository=hostdir/binpkgs package_name
+
+# If in nonfree
+sudo xbps-install --repository=hostdir/binpkgs/nonfree package_name
+\end{lstlisting}
+
+\subsection{Practical Example: Google Chrome}
+\begin{lstlisting}
+cd ~/void-packages
+echo "XBPS_ALLOW_RESTRICTED=yes" >> etc/conf
+./xbps-src pkg google-chrome
+sudo xbps-install --repository=hostdir/binpkgs/nonfree google-chrome
+\end{lstlisting}
+
+\section{Adding the Local Repo Permanently}
+\begin{lstlisting}
+sudo nano /etc/xbps.d/local-repo.conf
+\end{lstlisting}
+
+\begin{lstlisting}
+repository=/home/YOUR_USERNAME/void-packages/hostdir/binpkgs
+repository=/home/YOUR_USERNAME/void-packages/hostdir/binpkgs/nonfree
+\end{lstlisting}
+
+\section{Anatomy of a Template}
+
+\begin{lstlisting}
+pkgname=my-tool
+version=1.2.3
+revision=1
+short_desc="An awesome tool"
+maintainer="Your Name <email@example.com>"
+license="MIT"
+homepage="https://github.com/someone/my-tool"
+
+distfiles="https://github.com/someone/my-tool/archive/v${version}.tar.gz"
+checksum="sha256 hash goes here"
+
+hostmakedepends="python3"
+depends="python3"
+
+do_install() {
+    python3 setup.py install --prefix=/usr --root="${DESTDIR}"
+}
+\end{lstlisting}
+
+\subsection{Key Variables}
+
+\begin{center}
+\begin{tabularx}{0.9\textwidth}{lL}
+\toprule
+\textbf{Variable} & \textbf{Meaning} \\
+\midrule
+pkgname        & Package name \\
+version        & Version number \\
+revision       & Revision number (start at 1) \\
+short\_desc    & Short description (max 72 characters) \\
+distfiles      & Source URL (tar.gz or zip) \\
+checksum       & SHA256 hash of the source file \\
+hostmakedepends & Build-time tools \\
+makedepends    & Build-time libraries \\
+depends        & Runtime dependencies \\
+build\_style   & Automatic build method \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{build\_style Options}
+\begin{lstlisting}
+build_style=cmake          # CMake projects
+build_style=meson          # Meson projects
+build_style=gnu-configure  # Autotools (./configure)
+build_style=python3-module # Python (setup.py)
+build_style=go             # Go
+build_style=cargo          # Rust
+build_style=gnu-makefile   # Simple Makefile projects
+\end{lstlisting}
+
+\section{Getting the Checksum}
+\begin{lstlisting}
+# Using xtools
+xgensum -i srcpkgs/package_name/template
+
+# Manually
+wget https://source_url
+sha256sum filename.tar.gz
+\end{lstlisting}
+
+\section{Full Example: A Rust Package (zoxide)}
+\begin{lstlisting}
+./xbps-src newpkg zoxide
+\end{lstlisting}
+
+\begin{lstlisting}
+# srcpkgs/zoxide/template
+pkgname=zoxide
+version=0.9.4
+revision=1
+build_style=cargo
+short_desc="Smarter cd command"
+maintainer="Me <me@example.com>"
+license="MIT"
+homepage="https://github.com/ajeetdsouza/zoxide"
+distfiles="https://github.com/ajeetdsouza/zoxide/archive/v${version}.tar.gz"
+checksum="put sha256 here"
+\end{lstlisting}
+
+\begin{lstlisting}
+xgensum -i srcpkgs/zoxide/template
+./xbps-src pkg zoxide
+sudo xbps-install --repository=hostdir/binpkgs zoxide
+\end{lstlisting}
+
+\section{Everyday xbps-src Commands}
+\begin{lstlisting}
+./xbps-src pkg package_name          # Build
+./xbps-src -f pkg package_name       # Force rebuild from scratch
+./xbps-src clean package_name        # Clean build files
+./xbps-src show package_name         # Show dependencies
+cd ~/void-packages && git pull        # Update void-packages
+./xbps-src update-sys                 # Update outdated packages
+\end{lstlisting}
+
+\section{Updating a Package}
+\begin{lstlisting}
+cd ~/void-packages
+git pull
+nano srcpkgs/package_name/template   # Change version=
+xgensum -i srcpkgs/package_name/template
+./xbps-src pkg package_name
+sudo xbps-install -u package_name
+\end{lstlisting}
+
+\section{Hold: Prevent a Package from Updating}
+\begin{lstlisting}
+sudo xbps-pkgdb -m hold package_name
+sudo xbps-pkgdb -m unhold package_name
+\end{lstlisting}
+
+\section{Troubleshooting xbps-src}
+
+\textbf{"checksum mismatch":}
+\begin{lstlisting}
+xgensum -i srcpkgs/package_name/template
+\end{lstlisting}
+
+\textbf{Build is very slow:}
+\begin{lstlisting}
+echo "XBPS_MAKEJOBS=$(nproc)" >> etc/conf
+\end{lstlisting}
+
+\textbf{View the full build log:}
+\begin{lstlisting}
+./xbps-src pkg package_name 2>&1 | tee /tmp/build.log
+less /tmp/build.log
+\end{lstlisting}
+
+\section{Quick Summary}
+\begin{lstlisting}
+# Initial setup (one time)
+git clone --depth=1 https://github.com/void-linux/void-packages.git
+cd void-packages
+./xbps-src binary-bootstrap
+
+# Build and install an existing package
+./xbps-src pkg package_name
+sudo xbps-install --repository=hostdir/binpkgs package_name
+
+# Create a new package
+./xbps-src newpkg package_name
+# Edit the template
+xgensum -i srcpkgs/package_name/template
+./xbps-src pkg package_name
+sudo xbps-install --repository=hostdir/binpkgs package_name
+
+# Remove
+sudo xbps-remove package_name
+\end{lstlisting}
+
+% =============================================================
+\chapter{i3 on Void Linux (Migration from Sway + Running Both)}
+% =============================================================
+
+\section{The Core Difference in One Sentence}
+
+\begin{center}
+\begin{tabularx}{0.85\textwidth}{lLL}
+\toprule
+ & \textbf{Sway} & \textbf{i3} \\
+\midrule
+Display Server & Wayland & X11 / Xorg \\
+Config syntax  & \textasciitilde99\% identical & \textasciitilde99\% identical \\
+Compositor     & Built-in & Requires separate \texttt{picom} \\
+Screen Sharing & Via Portal + PipeWire & Direct (easier) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Full Migration Table: Swap These for Those}
+
+\begin{center}
+\begin{tabularx}{\textwidth}{lLL}
+\toprule
+\textbf{Role} & \textbf{Sway (Wayland)} & \textbf{i3 (X11)} \\
+\midrule
+Window Manager    & sway                         & i3 \\
+Status Bar        & waybar                       & polybar or i3status \\
+Notifications     & mako                         & dunst \\
+Launcher          & wofi / fuzzel                & rofi / dmenu \\
+Lock Screen       & swaylock                     & i3lock \\
+Idle              & swayidle                     & xss-lock + xautolock \\
+Wallpaper         & swaybg                       & feh / nitrogen \\
+Screenshot        & grim + slurp                 & flameshot / scrot \\
+Screen Recording  & wf-recorder                  & OBS / ffmpeg \\
+Clipboard         & wl-clipboard + clipman       & xclip / xdotool \\
+Compositor        & Built into Sway              & picom \\
+Display Config    & kanshi / wdisplays           & arandr / autorandr \\
+Brightness        & \multicolumn{2}{l}{brightnessctl (same)} \\
+Volume            & \multicolumn{2}{l}{pactl (same)} \\
+Theming           & nwg-look                     & lxappearance \\
+Polkit Agent      & \multicolumn{2}{l}{polkit-gnome (same)} \\
+Keyring           & \multicolumn{2}{l}{gnome-keyring (same)} \\
+Network Applet    & \multicolumn{2}{l}{nm-applet (same)} \\
+Bluetooth Applet  & \multicolumn{2}{l}{blueman-applet (same)} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{notebox}
+Items marked \textbf{(same)} do not need to be changed at all.
+\end{notebox}
+
+\section{Installing i3 on Void}
+
+\begin{lstlisting}
+# i3 and X11
+sudo xbps-install i3 xorg-minimal xinit
+
+# Tool replacements
+sudo xbps-install \
+  polybar \
+  dunst \
+  i3lock \
+  feh \
+  picom \
+  flameshot \
+  xclip \
+  arandr \
+  lxappearance \
+  xss-lock \
+  xautolock
+\end{lstlisting}
+
+\section{Launching i3 from the TTY}
+
+Create \texttt{\textasciitilde/.xinitrc}:
+
+\begin{lstlisting}
+#!/bin/sh
+
+# dbus must be first -- without it, PipeWire and Keyring won't work
+eval $(dbus-launch --sh-syntax)
+export DBUS_SESSION_BUS_ADDRESS
+
+# X11 variables
+export XDG_SESSION_TYPE=x11
+export XDG_SESSION_DESKTOP=i3
+export XDG_CURRENT_DESKTOP=i3
+
+# Keyring (after dbus)
+eval $(gnome-keyring-daemon --start --components=gpg,pkcs11,secrets,ssh \
+    | sed 's/^\(.*\)/export \1/g')
+export SSH_AUTH_SOCK
+
+# PipeWire (after dbus)
+pipewire &
+
+exec i3
+\end{lstlisting}
+
+\begin{lstlisting}
+chmod +x ~/.xinitrc
+\end{lstlisting}
+
+To launch:
+\begin{lstlisting}
+startx
+\end{lstlisting}
+
+\begin{warningbox}
+\textbf{Common mistake:} If you start PipeWire before dbus, or launch it from the i3 config instead of \texttt{.xinitrc}, audio will not work. The correct order is: \texttt{dbus} $\to$ \texttt{keyring} $\to$ \texttt{pipewire} $\to$ \texttt{i3}
+\end{warningbox}
+
+\section{Auto-start from TTY1 (Sway) or TTY2 (i3)}
+
+In \texttt{\textasciitilde/.profile}:
+
+\begin{lstlisting}
+# TTY1 -> Sway
+if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+    exec ~/.local/bin/start-sway
+fi
+
+# TTY2 -> i3
+if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty2" ]; then
+    exec startx
+fi
+\end{lstlisting}
+
+Now: \texttt{tty1} = Sway / \texttt{tty2} = i3. Switch between them with \texttt{Ctrl+Alt+F1} and \texttt{Ctrl+Alt+F2}.
+
+\section{i3 Config (A Full Starting Point)}
+
+\begin{lstlisting}
+mkdir -p ~/.config/i3
+cp /etc/i3/config ~/.config/i3/config 2>/dev/null || \
+  cp /usr/share/doc/i3/config ~/.config/i3/config 2>/dev/null || \
+  i3-config-wizard
+\end{lstlisting}
+
+Add the following to \texttt{\textasciitilde/.config/i3/config}:
+
+\begin{lstlisting}
+### Startup ###
+exec --no-startup-id dbus-update-activation-environment --all
+
+exec --no-startup-id pipewire &
+exec --no-startup-id dunst &
+exec --no-startup-id picom -b &
+exec --no-startup-id feh --bg-fill ~/wallpaper.jpg &
+exec --no-startup-id nm-applet &
+exec --no-startup-id blueman-applet &
+exec --no-startup-id udiskie --tray &
+exec --no-startup-id /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 &
+exec --no-startup-id xss-lock -- i3lock -f -c 000000 &
+
+### Status Bar ###
+bar {
+    status_command i3status
+    # or if you installed polybar:
+    # exec_always --no-startup-id polybar
+}
+
+### Screenshot ###
+bindsym Print exec flameshot gui
+bindsym Shift+Print exec flameshot full -p ~/Pictures/
+
+### Volume ###
+bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+
+### Brightness ###
+bindsym XF86MonBrightnessUp exec brightnessctl set +10%
+bindsym XF86MonBrightnessDown exec brightnessctl set 10%-
+
+### Lock ###
+bindsym $mod+l exec i3lock -f -c 000000
+\end{lstlisting}
+
+\section{Sharing Config Between i3 and Sway (The Smart Way)}
+
+The two configs are nearly identical --- you can maintain one shared config with separate override files for each WM.
+
+\subsection{Structure}
+
+\begin{lstlisting}
+~/.config/i3/config             <- Shared config (keybindings, layouts, etc.)
+~/.config/i3/conf.d/i3.conf    <- i3-only settings (polybar, picom, i3lock)
+~/.config/sway/config           <- Symlink to the shared config
+~/.config/sway/conf.d/sway.conf <- Sway-only settings (waybar, swaylock)
+\end{lstlisting}
+
+\subsection{Implementation}
+
+\begin{lstlisting}
+# Create the symlink
+mkdir -p ~/.config/sway/conf.d ~/.config/i3/conf.d
+ln -s ~/.config/i3/config ~/.config/sway/config
+\end{lstlisting}
+
+Add at the end of \texttt{\textasciitilde/.config/i3/config}:
+\begin{lstlisting}
+# Load WM-specific extras
+include conf.d/*.conf
+\end{lstlisting}
+
+In \texttt{\textasciitilde/.config/i3/conf.d/i3.conf}:
+\begin{lstlisting}
+exec --no-startup-id picom -b &
+exec --no-startup-id polybar &
+exec --no-startup-id feh --bg-fill ~/wallpaper.jpg &
+bindsym $mod+l exec i3lock -f -c 000000
+\end{lstlisting}
+
+In \texttt{\textasciitilde/.config/sway/conf.d/sway.conf}:
+\begin{lstlisting}
+exec waybar &
+exec swaybg -i ~/wallpaper.jpg -m fill &
+bindsym $mod+l exec swaylock -f -c 000000
+output * bg ~/wallpaper.jpg fill
+\end{lstlisting}
+
+\section{Theming in i3}
+
+i3 uses \texttt{lxappearance} instead of \texttt{nwg-look}:
+
+\begin{lstlisting}
+lxappearance
+\end{lstlisting}
+
+Same idea --- choose GTK theme + Icons + Cursor and click Apply. On X11 it works more straightforwardly without the \texttt{gsettings} complexity.
+
+\section{picom (Compositor for i3)}
+
+Without it you will not have transparency or visual effects. Minimal setup:
+
+\begin{lstlisting}
+# Launch from i3 config
+exec --no-startup-id picom -b
+
+# Or with a custom config
+mkdir -p ~/.config/picom
+nano ~/.config/picom/picom.conf
+\end{lstlisting}
+
+\begin{lstlisting}
+# picom.conf -- minimal setup
+backend = "glx";
+vsync = true;
+shadow = false;
+fading = true;
+fade-in-step = 0.05;
+fade-out-step = 0.05;
+
+# Transparency for terminal emulators
+opacity-rule = [
+    "90:class_g = 'tilix'",
+    "90:class_g = 'Alacritty'"
+];
+\end{lstlisting}
+
+\section{Summary: What to Install on Top of What You Have}
+
+\begin{lstlisting}
+# X11 base
+sudo xbps-install xorg-minimal xinit
+
+# i3 ecosystem
+sudo xbps-install i3 polybar dunst i3lock feh picom flameshot \
+  xclip arandr lxappearance xss-lock
+
+# No need to reinstall:
+# pipewire, nm-applet, blueman, udiskie, polkit-gnome, brightnessctl
+\end{lstlisting}
+
+\section{Quick Verification}
+
+\begin{lstlisting}
+# Verify Xorg
+which startx
+ls /usr/bin/Xorg
+
+# Verify i3
+which i3
+i3 --version
+
+# Launch
+startx
+\end{lstlisting}
+
+% =============================================================
+\end{document}
