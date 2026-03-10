@@ -5,7 +5,7 @@
 ## إعداد NetworkManager (لو مش متعمل)
 
 ```bash
-sudo xbps-install NetworkManager network-manager-applet
+sudo xbps-install NetworkManager network-manager-applet vnstat
 
 # إيقاف الخدمات القديمة
 sudo sv stop dhcpcd wpa_supplicant 2>/dev/null
@@ -14,6 +14,9 @@ sudo rm /var/service/dhcpcd /var/service/wpa_supplicant 2>/dev/null
 # تفعيل NetworkManager
 sudo ln -s /etc/sv/dbus /var/service/
 sudo ln -s /etc/sv/NetworkManager /var/service/
+
+# تفعيل مراقب الاستهلاك vnstat
+sudo ln -s /etc/sv/vnstatd /var/service/
 ```
 
 ### DNS ثابت (اختياري)
