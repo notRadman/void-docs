@@ -12,7 +12,8 @@ sudo xbps-install \
   alsa-tools \
   alsa-pipewire \
   libspa-bluetooth \
-  pavucontrol
+  pavucontrol \
+  helvum
 ```
 
 > `libspa-bluetooth` ضروري عشان الـ Bluetooth headphones تشتغل مع PipeWire.
