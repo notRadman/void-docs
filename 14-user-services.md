@@ -66,7 +66,7 @@ sudo ln -s /etc/sv/runsvdir-YOUR-USERNAME /var/service/
 exec runsvdir ~/path/to/service &
 ```
 
-بعدين حط السيرفسز في `~/.path/to/service/`.
+بعدين حط السيرفسز في `~/path/to/service/`.
 
 ### مثال — syncthing كـ user service
 
