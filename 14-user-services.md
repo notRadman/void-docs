@@ -29,7 +29,7 @@ sudo nano /etc/sv/runsvdir-YOUR-USERNAME/run
 export USER="YOUR-USERNAME"
 export HOME="$HOME"
 groups="$(id -Gn "$USER" | tr ' ' ':')"
-svdir="$HOME/service"
+svdir="$HOME/path/to/service"
 exec chpst -u "$USER:$groups" runsvdir "$svdir"
 ```
 
