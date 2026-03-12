@@ -9,7 +9,7 @@
 runit على Void بيشتغل على مستويين:
 
 - **System services** — في `/var/service/` — بتشتغل عند الـ boot كـ root
-- **User services** — في `~/path/to/service/` — بتشتغل مع الجلسة بتاعت اليوزر
+- **User services** — في `~/path/to/servicesFolder/` — بتشتغل مع الجلسة بتاعت اليوزر
 
 ---
 
@@ -18,8 +18,8 @@ runit على Void بيشتغل على مستويين:
 ### الخطوة 1: إنشاء الـ service
 
 ```bash
-sudo mkdir -p /etc/sv/runsvdir-YOUR-USERNAME
-sudo nano /etc/sv/runsvdir-YOUR-USERNAME/run
+sudo mkdir -p /etc/sv/runsvdir-{your-username}
+sudo nano /etc/sv/runsvdir-YOUR-{your-username}/run
 ```
 
 محتوى الملف:
@@ -29,7 +29,7 @@ sudo nano /etc/sv/runsvdir-YOUR-USERNAME/run
 export USER="YOUR-USERNAME"
 export HOME="$HOME"
 groups="$(id -Gn "$USER" | tr ' ' ':')"
-svdir="$HOME/path/to/service"
+svdir="$HOME/path/to/servicesFolder"
 exec chpst -u "$USER:$groups" runsvdir "$svdir"
 ```
 
@@ -40,13 +40,13 @@ sudo chmod +x /etc/sv/runsvdir-YOUR-USERNAME/run
 ### الخطوة 2: إنشاء مجلد الـ services
 
 ```bash
-mkdir -p ~/path/to/service
+mkdir -p ~/path/to/servicesFolder
 ```
 
 ### الخطوة 3: تفعيله
 
 ```bash
-sudo ln -s /etc/sv/runsvdir-YOUR-USERNAME /var/service/
+sudo ln -s /etc/sv/runsvdir-{your-username} /var/service/
 ```
 
 ### ⚠️ قيود هذه الطريقة
@@ -63,7 +63,7 @@ sudo ln -s /etc/sv/runsvdir-YOUR-USERNAME /var/service/
 للسيرفسز اللي محتاجة الجلسة الجرافيكية — أضف في كونفيج سواي:
 
 ```bash
-exec runsvdir ~/path/to/service &
+exec runsvdir ~/path/to/servicesFolder &
 ```
 
 بعدين حط السيرفسز في `~/path/to/service/`.
@@ -71,8 +71,8 @@ exec runsvdir ~/path/to/service &
 ### مثال — syncthing كـ user service
 
 ```bash
-mkdir -p ~/path/to/service/syncthing
-nano ~/path/to/service/syncthing/run
+mkdir -p ~/path/to/servicesFolder/syncthing
+nano ~/path/to/servicesFolder/syncthing/run
 ```
 
 ```sh
@@ -81,7 +81,7 @@ exec syncthing --no-browser --logfile=default 2>&1
 ```
 
 ```bash
-chmod +x ~/path/to/service/syncthing/run
+chmod +x ~/path/to/servicesFolder/syncthing/run
 ```
 
 ---
@@ -91,7 +91,7 @@ chmod +x ~/path/to/service/syncthing/run
 كل service عبارة عن فولدر فيه ملف `run`:
 
 ```
-~/path/to/service/serviceName/
+~/path/to/servicesFolder/serviceName/
 └── اسم-السيرفس/
     ├── run          ← ملف التشغيل (إلزامي)
     ├── finish       ← بيتشغّل لما السيرفس يوقف (اختياري)
@@ -102,8 +102,8 @@ chmod +x ~/path/to/service/syncthing/run
 ### مثال — backup script
 
 ```bash
-mkdir -p ~/path/to/service/backup
-nano ~/path/to/service/backup/run
+mkdir -p ~/path/to/servicesFolder/backup
+nano ~/path/to/servicesFolder/backup/run
 ```
 
 ```sh
@@ -112,7 +112,7 @@ exec /path/to/your/script.sh 2>&1
 ```
 
 ```bash
-chmod +x ~/path/to/service/backup/run
+chmod +x ~/path/to/servicesFolder/backup/run
 ```
 
 ---
@@ -121,7 +121,7 @@ chmod +x ~/path/to/service/backup/run
 
 ```bash
 # تأكد إنك حاطت SVDIR في ~/.profile
-export SVDIR=~/path/to/service
+export SVDIR=~/path/to/servicesFolder
 
 # بعدين الأوامر العادية بتشتغل
 sv status syncthing
@@ -136,7 +136,7 @@ sv restart syncthing
 
 ```bash
 # إنشاء ملف down جوّا الـ service
-touch ~/path/to/service/اسم-السيرفس/down
+touch ~/path/to/servicesFolder/اسم-السيرفس/down
 sv down اسم-السيرفس
 ```
 
@@ -144,6 +144,6 @@ sv down اسم-السيرفس
 
 ## ملاحظات مهمة
 
-لما تعمل `runsvdir` من سواي بـ `exec runsvdir ~/path/to/service &` — هي بتموت مع الجلسة. ده سلوك صح ومتوقع.
+لما تعمل `runsvdir` من سواي بـ `exec runsvdir ~/path/to/servicesFolder &` — هي بتموت مع الجلسة. ده سلوك صح ومتوقع.
 
 لو عايز سيرفس يفضل شغّال حتى لو خرجت من سواي — استخدم الطريقة الأولى (system-level).
