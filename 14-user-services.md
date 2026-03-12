@@ -63,16 +63,16 @@ sudo ln -s /etc/sv/runsvdir-YOUR-USERNAME /var/service/
 للسيرفسز اللي محتاجة الجلسة الجرافيكية — أضف في كونفيج سواي:
 
 ```bash
-exec runsvdir ~/.config/path/to/service &
+exec runsvdir ~/path/to/service &
 ```
 
-بعدين حط السيرفسز في `~/.config/path/to/service/`.
+بعدين حط السيرفسز في `~/.path/to/service/`.
 
 ### مثال — syncthing كـ user service
 
 ```bash
-mkdir -p ~/.config/path/to/service/syncthing
-nano ~/.config/path/to/service/syncthing/run
+mkdir -p ~/path/to/service/syncthing
+nano ~/path/to/service/syncthing/run
 ```
 
 ```sh
@@ -81,7 +81,7 @@ exec syncthing --no-browser --logfile=default 2>&1
 ```
 
 ```bash
-chmod +x ~/.config/path/to/service/syncthing/run
+chmod +x ~/path/to/service/syncthing/run
 ```
 
 ---
@@ -91,7 +91,7 @@ chmod +x ~/.config/path/to/service/syncthing/run
 كل service عبارة عن فولدر فيه ملف `run`:
 
 ```
-~/path/to/service/
+~/path/to/service/serviceName/
 └── اسم-السيرفس/
     ├── run          ← ملف التشغيل (إلزامي)
     ├── finish       ← بيتشغّل لما السيرفس يوقف (اختياري)
@@ -144,6 +144,6 @@ sv down اسم-السيرفس
 
 ## ملاحظات مهمة
 
-لما تعمل `runsvdir` من سواي بـ `exec runsvdir ~/.config/path/to/service &` — هي بتموت مع الجلسة. ده سلوك صح ومتوقع.
+لما تعمل `runsvdir` من سواي بـ `exec runsvdir ~/path/to/service &` — هي بتموت مع الجلسة. ده سلوك صح ومتوقع.
 
 لو عايز سيرفس يفضل شغّال حتى لو خرجت من سواي — استخدم الطريقة الأولى (system-level).
