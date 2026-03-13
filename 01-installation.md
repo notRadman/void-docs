@@ -226,6 +226,7 @@ WIFI_PWR_ON_BAT=off
 
 ```bash
 sudo xbps-install \
+  jq \
   liberation-fonts-ttf \
   dejavu-fonts-ttf \
   noto-fonts-ttf \
