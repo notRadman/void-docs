@@ -123,6 +123,34 @@ mkdir -p ~/.config/tilix/schemes
 
 ---
 
+## Qt — إعدادات منفصلة
+
+برامج Qt (زي Zeal وغيرها) مش بتتأثر بـ nwg-look، محتاج **qt5ct**.
+
+### التثبيت
+
+```bash
+sudo xbps-install qt5ct
+```
+
+### الإعداد
+
+أضف في `/etc/environment`:
+```
+QT_QPA_PLATFORMTHEME=qt5ct
+```
+
+بعدين شغّل:
+```bash
+qt5ct
+```
+
+اختار Style + Color scheme من الواجهة واضغط OK.
+
+> لو عندك برامج Qt6 برضو، ثبّت `qt6ct` ونفس الخطوات.
+
+---
+
 ## مكان الثيمات
 
 ```bash
